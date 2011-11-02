@@ -1,0 +1,71 @@
+# simple.world - basic world file example
+# Authors: Richard Vaughan, Mani
+# $Id$
+
+include "pioneer.inc"
+include "map.inc"
+
+speedup -1
+
+paused 1
+
+# low resolution gives fast raytracing. set this only as small as you need for your application
+resolution 0.02
+
+# this is very helpful if you have multiple CPUs - a good value is $(number of CPU cores) - 
+threads 1
+
+# configure the GUI window
+window
+(
+  size [ 742.000 730.000 ] # in pixels
+#  scale 10.150            
+  center [ 0  0 ]
+  rotate [ 0  0 ]
+  show_data 1              # 1=on 0=off
+)
+
+# load an environment bitmap
+floorplan
+(				
+  name "blank"
+  size [20.000 20.000 0.800]
+  pose [0 0 0 0]
+  bitmap "bitmaps/rink.png"  
+)
+
+define agent pioneer2dx_front_sonar
+#define agent pioneer3dx
+(		  
+  color "random"
+#  ctrl "pioneer_flocking"
+  ctrl "contribcircle"
+  fiducial_return 1
+#  fiducial()
+#  fiducial( range_max_id 9 range_max 6 fov 359 pose [ 0 0 0 0 ] )
+   fiducial( range_max 5 fov 359 pose [ 0 0 0 0 ] )  
+
+  localization "gps"
+  localization_origin [ 0 0 0 0 ]
+  drive "omni"
+  gui_nose 1
+)
+
+agent( pose [ -5 -3 0 0 ] )
+agent( pose [ -5 5 0 0 ] )
+agent( pose [ 5 3 0 0 ] )
+agent( pose [ 7 -1 0 0 ] )
+agent( pose [ 3 -3 0 0 ] )
+agent( pose [ 5 -3 0 0 ] )
+
+agent( pose [ -5 -5 0 0 ] )
+agent( pose [ 5 -4.5 0 0 ] )
+agent( pose [ 6.2 1.5 0 0 ] )
+agent( pose [ -3.3 -0.5 0 0 ] )
+
+agent( pose [ -3 -3 0 0 ] )
+agent( pose [ 7 -2.2 0 0 ] )
+agent( pose [ -6 -4 0 0 ] )
+agent( pose [ -2 1.5 0 0 ] )
+
+
