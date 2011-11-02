@@ -28,10 +28,10 @@ typedef struct
 
 // Define const double XXX = YYYY; Here for global access during control
 
-const Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
+
 const double FATTMAX = 1.0;
 const double FREPMAX = -2.0;
-const double FWATT = 1.0;
+const double FWATT = 0.01;
 const double RMIN = 5.0;
 
 // forward declare
@@ -46,7 +46,7 @@ extern "C" int Init( Model* mod )
   robot_t* robot = new robot_t;
   robot->position = (ModelPosition*)mod;
 
-
+  
 
   // subscribe to the ranger, which we use for navigating
   robot->ranger = (ModelRanger*)mod->GetUnusedModelOfType( "ranger" );
@@ -72,7 +72,7 @@ int RangerUpdate( ModelRanger* rgr, robot_t* robot )
     return 0;
 }
 
-int FiducialUpdate( ModelFiducial* fid, robot_t* robot )
+int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 {
   // find the closest teammate
 
@@ -102,9 +102,20 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot )
 */
   //printf("Position of %d : %6.4f %6.4f \n", robot->position->GetId(), robot->position->GetPose().x, robot->position->GetPose().y);
 
+  /* This is some shared knowledge, let's say it's global now */
+  static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
+  static double movementX = 0.0;//1e-4;
+  
   double att_dx = attCenter.x - robot->position->GetPose().x;
   double att_dy = attCenter.y - robot->position->GetPose().y;
 
+  attCenter.x += movementX;
+  
+  if (fabs(attCenter.x) > 4.0)
+  {
+      movementX = -1.0 * movementX;
+  }
+  
   //printf("Error of %d : %6.4f %6.4f \n", robot->position->GetId(), att_dx, att_dy);
   double att_d = sqrt( (att_dx * att_dx) + (att_dy * att_dy) );
 
@@ -172,11 +183,19 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot )
   /* The Angular Velocity Module Calculation */
 
   double w_robot = 0.0;
-//  radians_t r_heading = robot->position->GetPose().a;
-//  radians_t angle_error = normalize ((att_theta + 3.1415) - r_heading);
-//  w_robot = FWATT * 2.0 * (sigmoid(angle_error) - 0.5);
+  radians_t r_heading = robot->position->GetPose().a;
+  radians_t angle_error = normalize ( normalize(att_theta + 3.1415) - r_heading);
+  w_robot = FWATT * 2.0 * (sigmoid(angle_error) - 0.5);
 
-//  if (sqrt( (vx_robot * vx_robot) + (vy_robot * vy_robot) ) > 0.01) w_robot = 0.0;
-  robot->position->SetSpeed( vx_robot, vy_robot, w_robot);
+  if (sqrt( (vx_robot * vx_robot) + (vy_robot * vy_robot) ) > 0.01) 
+  {
+      robot->position->SetSpeed( vx_robot, vy_robot, 0.0);
+  }
+  else
+  {
+      robot->position->SetSpeed( 0.0, 0.0, w_robot);
+  }
+  
+  //robot->position->SetSpeed(0.0, 0.0, 1.0);
   return 0;
 }
