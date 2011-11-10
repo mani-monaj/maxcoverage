@@ -30,7 +30,7 @@ typedef struct
 
 
 const double FATTMAX = 1.0;
-const double FREPMAX = -2.0;
+const double FREPMAX = -1.0;
 const double FWATT = 0.01;
 const double RMIN = 5.0;
 
@@ -187,6 +187,8 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   radians_t angle_error = normalize ( normalize(att_theta + 3.1415) - r_heading);
   w_robot = FWATT * 2.0 * (sigmoid(angle_error) - 0.5);
 
+  w_robot = 0.0;
+  robot->position->SetSpeed( vx_robot, vy_robot, 0.0);
   if (sqrt( (vx_robot * vx_robot) + (vy_robot * vy_robot) ) > 0.01) 
   {
       robot->position->SetSpeed( vx_robot, vy_robot, 0.0);
