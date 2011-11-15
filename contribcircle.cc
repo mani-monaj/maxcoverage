@@ -6,6 +6,8 @@
 
 #include "stage.hh"
 
+// Just some comment
+
 using namespace Stg;
 
 double sigmoid(double x)
