@@ -43,7 +43,7 @@ define agent pioneer2dx
   ctrl "contribcircle"
   fiducial_return 2
 #  fiducial()
-  fiducial( range_max_id 10 range_max 10 fov 359 pose [ 0 0 0 0 ] )
+  fiducial( range_max_id 6 range_max 6 fov 359 pose [ 0 0 0 0 ] )
 #   fiducial( range_max 10 fov 359 pose [ 0 0 0 0 ] )  
 
   localization "gps"
@@ -59,14 +59,14 @@ agent( pose [ 7 -1 0 0 ] )
 agent( pose [ 3 -3 0 0 ] )
 agent( pose [ 5 -3 0 0 ] )
 
-agent( pose [ -5 -5 0 0 ] )
-agent( pose [ 5 -4.5 0 0 ] )
-agent( pose [ 6.2 1.5 0 0 ] )
-agent( pose [ -3.3 -0.5 0 0 ] )
+#agent( pose [ -5 -5 0 0 ] )
+#agent( pose [ 5 -4.5 0 0 ] )
+#agent( pose [ 6.2 1.5 0 0 ] )
+#agent( pose [ -3.3 -0.5 0 0 ] )
 
-agent( pose [ -3 -3 0 0 ] )
-agent( pose [ 7 -2.2 0 0 ] )
-agent( pose [ -6 -4 0 0 ] )
-agent( pose [ -2 1.5 0 0 ] )
+#agent( pose [ -3 -3 0 0 ] )
+#agent( pose [ 7 -2.2 0 0 ] )
+#agent( pose [ -6 -4 0 0 ] )
+#agent( pose [ -2 1.5 0 0 ] )
 
 
