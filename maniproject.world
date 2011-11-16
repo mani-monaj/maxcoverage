@@ -41,10 +41,10 @@ define agent pioneer2dx
   color "random"
 #  ctrl "pioneer_flocking"
   ctrl "contribcircle"
-  fiducial_return 1
+  fiducial_return 2
 #  fiducial()
-#  fiducial( range_max_id 9 range_max 6 fov 359 pose [ 0 0 0 0 ] )
-   fiducial( range_max 10 fov 359 pose [ 0 0 0 0 ] )  
+  fiducial( range_max_id 10 range_max 10 fov 359 pose [ 0 0 0 0 ] )
+#   fiducial( range_max 10 fov 359 pose [ 0 0 0 0 ] )  
 
   localization "gps"
   localization_origin [ 0 0 0 0 ]
