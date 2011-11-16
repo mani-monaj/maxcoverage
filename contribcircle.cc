@@ -25,11 +25,12 @@ enum RobotState
 
 enum MessageType
 {
-    SYNC = 0,
-    IAMCOMMING = 1,
-    IAMLEAVING = 2,
-    WELCOME = 3,
-    BYE = 4
+    ADDROBOT = 0,
+    REMOVEROBOT = 1,
+    IAMCOMMING = 2,
+    IAMLEAVING = 3,
+    WELCOME = 4,
+    BYE = 5
 };
 
 /* Minimal Message Structure */
@@ -39,7 +40,9 @@ struct RobotMessage {
     unsigned int receiver;
     double t;
     //double val;
-    list<unsigned int> ids;
+    
+    unsigned int robotid;
+    unsigned int relaycount;
 };
 
 typedef struct
@@ -57,6 +60,8 @@ typedef struct
   //double belief;
   list<unsigned int> teammates;
   deque<double> d2c; //This one is used to check if robot is in group
+  
+  double energy;
 } robot_t;
 
 // Define const double XXX = YYYY; Here for global access during control
@@ -64,7 +69,7 @@ typedef struct
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
 const double FWATT = 0.01;
-const double RMIN = 5.0;
+const double RMIN = 2.0;
 
 static list<RobotMessage> MessageList;
 
@@ -90,7 +95,7 @@ void setRobotState(robot_t* r, RobotState s)
 }
 
 // No Broadcast support yet ...
-void sendMessage(MessageType type, int sender, int receiver, list<unsigned int> ids)
+void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, unsigned int rc)
 {
     RobotMessage msg;
     msg.type = type;
@@ -99,7 +104,8 @@ void sendMessage(MessageType type, int sender, int receiver, list<unsigned int> 
     msg.receiver = receiver;
     //msg.val = val;
     //msg.ids.assign(ids.begin(), ids.end());
-    msg.ids = ids;
+    msg.robotid = rid;
+    msg.relaycount = rc;
     
     MessageList.push_back(msg);
 }
@@ -136,6 +142,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot );
 
 extern "C" int Init( Model* mod )
 {
+  srand ( time(NULL) );
   robot_t* robot = new robot_t;
   robot->position = (ModelPosition*)mod;
 
@@ -161,6 +168,7 @@ extern "C" int Init( Model* mod )
   
   robot->teammates.push_front(robot->position->GetId());
   setRobotState(robot, SEARCHING);
+  robot->energy = robot->position->GetId() * 1000.0;
 //  if (robot->position->GetId() == 2)
 //  {
 //      setRobotState(robot, INGROUP);
@@ -227,7 +235,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   
   /* State Based Communication and Transitions */
   
-  printf("I am robot %d, I think there are %d bots in the world. [Inbox Size : %4d] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size());
+  printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
   
 //  list<RobotMessage>::iterator mit;
 //  for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
@@ -241,31 +249,34 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
       // Check if any WELCOME message received
       list<RobotMessage>::iterator mit;
-      list<unsigned int> updated;
-      double tMax = 0.0;
+      //list<unsigned int> updated;
+      //double tMax = 0.0;
+      bool updated = false;
       for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
       {
           RobotMessage msg = *(mit);
           if (msg.type == WELCOME)
           {
-              // Looking for most recent Message
-              if (msg.t > tMax)
-              {
-                  tMax = msg.t;
-                  updated = msg.ids;
-              }
+//              // Looking for most recent Message
+//              if (msg.t > tMax)
+//              {
+//                  tMax = msg.t;
+//                  updated = msg.ids;
+//              }
+              updated = true;
+              robot->teammates.push_back(msg.robotid);
           }
       
           // I am only looking for welcome messages, erase everything else
-          msg.ids.clear();
           robot->inbox.erase(mit);
       }
       
       
-      if (updated.size() > 0) // Hurray! Welcome Message Received
+      if (updated) // Hurray! Welcome Message Received
       {
           setRobotState(robot, INGROUP);
-          robot->teammates = updated;
+          robot->teammates.sort();
+          robot->teammates.unique();
       }
       else if (robot->d2c.size() > 80) // Check if you are in group based on differences over recent distances to center
       {
@@ -292,6 +303,11 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           {
               //printf("I am robot %d and just promoted!\n", robot->position->GetId());
               setRobotState(robot, INGROUP);
+              FOR_EACH( it, fid->GetFiducials() )
+              {
+                  ModelFiducial::Fiducial* other = &(*it);
+                  robot->teammates.push_back(other->id);
+              }
           }
       }
       
@@ -302,13 +318,14 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           FOR_EACH( it, fid->GetFiducials() )
           {
               ModelFiducial::Fiducial* other = &(*it);
-              sendMessage(IAMCOMMING, robot->position->GetId(), other->id, robot->teammates); // The value is not important
+              sendMessage(IAMCOMMING, robot->position->GetId(), other->id, 0, 0); // The value is not important
           }
       }
   }
   else if (robot->state == INGROUP)
   {
       
+      robot->energy -= 5;
       // Step 1: Look for incomming messages and take appropriate update
       
       list<RobotMessage>::iterator mit;
@@ -326,7 +343,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
               robot->teammates.push_back(msg.sender);
               welcomeacklist.push_back(msg.sender);
               
-              msg.ids.clear();
               robot->inbox.erase(mit);
           }
           else if (msg.type == IAMLEAVING)
@@ -334,75 +350,149 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
               joinleave = true;
               robot->teammates.remove(msg.sender);
               byeacklist.push_back(msg.sender);
-              //sendMessage(BYE, robot->position->GetId(), msg.sender, robot-); // Reply Back
+              sendMessage(BYE, robot->position->GetId(), msg.sender, 0, 0); // Reply Back
               
-              msg.ids.clear();
               robot->inbox.erase(mit);
           }
       }
       
       list<unsigned int>::iterator iit;
-      
-      //printf("######## Sending %d welcome back messages \n", welcomeacklist.size());
+      list<unsigned int>::iterator tit; //Not only iterator names are confusing, this one is also a little bit naughty ;)
 
       for (iit = welcomeacklist.begin(); iit != welcomeacklist.end(); ++iit)
       {
-          sendMessage(WELCOME, robot->position->GetId(), *iit, robot->teammates); // Reply Back  
-      }
-      
-      // Update your belief using INGROUP SYNC messages
-      
-      double tMax = 0.0;
-      list<unsigned int> updated;
-      for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
-      {
-          RobotMessage msg = *mit;
-          if (msg.type == SYNC)
+          for (tit = robot->teammates.begin(); tit != robot->teammates.end(); ++tit)
           {
-              if (msg.t > tMax)
-              {
-                  updated = msg.ids;
-                  tMax = msg.t;
-              }
-              
-              msg.ids.clear();
-              robot->inbox.erase(mit);
+              // Send all my teammates information to all people who told me they are coming!
+              sendMessage(WELCOME, robot->position->GetId(), *iit, *tit, 0); // Reply Back  
           }
       }
-
-      if (updated.size() > 0)
-      {
-          robot->teammates.sort();
-          updated.sort();
-          robot->teammates.merge(updated);
-          robot->teammates.unique();
-      }
-     
       
-      // Step 2: Send Sync Messages (Don't send messages to people you You said welcome!)
+      // Create a new list of nearby robots that are not in welcome or bye lists
       
+      list<unsigned int> inGroupNeighbors;
       FOR_EACH( it, fid->GetFiducials() )
       {
           ModelFiducial::Fiducial* other = &(*it);
           
           bool found = false;
-          for (iit = welcomeacklist.begin(); (iit != welcomeacklist.end()) && (!found); ++iit)
+          for (iit = welcomeacklist.begin(); (iit != welcomeacklist.end()) /* && (!found) */; ++iit)
           {
               if (other->id == *iit) found = true;
           }
           
-          if (!found) sendMessage(SYNC, robot->position->GetId(), other->id, robot->teammates); 
+          for (iit = byeacklist.begin(); (iit != byeacklist.end()) /* && (!found) */; ++iit)
+          {
+              if (other->id == *iit) found = true;
+          }
+          
+          if (!found) inGroupNeighbors.push_back(other->id); 
+      }
+      
+      // Update your belief using INGROUP SYNC messages
+      
+      double tMax = 0.0;
+      for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
+      {
+          RobotMessage msg = *mit;
+          if ((msg.type == ADDROBOT) || (msg.type == REMOVEROBOT))
+          {
+//              if (msg.t > tMax)
+//              {
+//                  updated = msg.ids;
+//                  tMax = msg.t;
+//              }
+              
+              if (msg.type == ADDROBOT)
+              {
+                  robot->teammates.push_back(msg.robotid);
+              }
+              else if (msg.type = REMOVEROBOT)
+              {
+                  robot->teammates.remove(msg.robotid);
+              }
+              
+              inGroupNeighbors.remove(msg.sender);
+              if (msg.relaycount > 0)
+              {
+                  list<unsigned int>::iterator nit;
+                  for (nit = inGroupNeighbors.begin(); nit != inGroupNeighbors.end(); ++nit)
+                  {
+                      sendMessage(msg.type, robot->position->GetId(), *nit, msg.robotid, msg.relaycount-1);
+                  }
+              }
+          }
+          robot->inbox.erase(mit);
+      }
+
+      robot->teammates.sort();
+      robot->teammates.unique();
+      
+//      if (updated.size() > 0)
+//      {
+//          robot->teammates.sort();
+//          updated.sort();
+//          robot->teammates.merge(updated);
+//          robot->teammates.unique();
+//      }
+     
+      
+      // Step 2: Send Sync Messages (Don't send messages to people you You said welcome!)
+      
+//      FOR_EACH( it, fid->GetFiducials() )
+//      {
+//          ModelFiducial::Fiducial* other = &(*it);
+//          
+//          bool found = false;
+//          for (iit = welcomeacklist.begin(); (iit != welcomeacklist.end()) && (!found); ++iit)
+//          {
+//              if (other->id == *iit) found = true;
+//          }
+//          
+//          if (!found) sendMessage(SYNC, robot->position->GetId(), other->id, robot->teammates); 
+//      }
+      
+      list<unsigned int>::iterator nit;
+      for (nit = inGroupNeighbors.begin(); nit != inGroupNeighbors.end(); ++nit)
+      {
+          for (tit = welcomeacklist.begin(); tit != welcomeacklist.end(); ++tit)
+          {
+              sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 3);
+          }
+          
+          for (tit = byeacklist.begin(); tit != byeacklist.end(); ++tit)
+          {
+              sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 3);
+          }
+          
       }
       
       // Step 3: Check State Trnasitions for itself
+      if (robot->energy < 500.0)
+      {
+          FOR_EACH( it, fid->GetFiducials() )
+          {
+              ModelFiducial::Fiducial* other = &(*it);
+              sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 0); // The value is not important
+          }
+          setRobotState(robot, HOMING);
+      }
   }
   else if (robot->state == HOMING)
   {
-      ;
+      robot->position->SetPose(Stg::Pose::Random(-12.0, -10.0, -12.0, -10.0));
+      setRobotState(robot, CHARGING);
   }
   else if (robot->state == CHARGING)
   {
-      ;
+      if (robot->energy < robot->position->GetId() * 1000.0)
+      {
+          robot->energy += 100.0;
+      }
+      else
+      {
+          //setRobotState(robot, SEARCHING);
+      }
   }
   /* Actions Based on State - No State Transition Here */
   if ((robot->state == SEARCHING) || (robot->state == INGROUP))  
@@ -420,13 +510,14 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
 
       double att_force;
-      if (att_d < RMIN)
+      double rmin_adaptive = RMIN + ((double) robot->teammates.size() / 4.0);
+      if (att_d < rmin_adaptive)
       {
           att_force = -FATTMAX;
       }
       else
       {
-          att_force = FATTMAX * 2.0 * (sigmoid(att_d - RMIN) - 0.5);
+          att_force = FATTMAX * 2.0 * (sigmoid(att_d - rmin_adaptive) - 0.5);
       }
 
       double att_theta = atan2(att_dy, att_dx);
