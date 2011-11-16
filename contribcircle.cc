@@ -235,7 +235,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   
   /* State Based Communication and Transitions */
   
-  printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
   
 //  list<RobotMessage>::iterator mit;
 //  for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
@@ -324,7 +323,8 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   }
   else if (robot->state == INGROUP)
   {
-      
+      printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
+
       robot->energy -= 5;
       // Step 1: Look for incomming messages and take appropriate update
       
@@ -480,7 +480,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   }
   else if (robot->state == HOMING)
   {
-      robot->position->SetPose(Stg::Pose::Random(-12.0, -10.0, -12.0, -10.0));
+      robot->position->SetPose(Stg::Pose::Random(-12.0, 12.0, -14.0, -10.0));
       setRobotState(robot, CHARGING);
   }
   else if (robot->state == CHARGING)
@@ -488,6 +488,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       if (robot->energy < robot->position->GetId() * 1000.0)
       {
           robot->energy += 100.0;
+          robot->position->SetSpeed(0.0, 0.0, 0.0);
       }
       else
       {
