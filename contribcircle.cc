@@ -216,7 +216,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   /* This is some shared knowledge, let's say it's global now */
   
   static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
-  static double movementX = 0.0;//1e-4;
+  static double movementX = 1e-4;
   double att_dx = attCenter.x - robot->position->GetPose().x;
   double att_dy = attCenter.y - robot->position->GetPose().y;
   double att_d = sqrt( (att_dx * att_dx) + (att_dy * att_dy) );
@@ -325,7 +325,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   {
       printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
 
-      robot->energy -= 5;
+      robot->energy -= 2.5;
       // Step 1: Look for incomming messages and take appropriate update
       
       list<RobotMessage>::iterator mit;
