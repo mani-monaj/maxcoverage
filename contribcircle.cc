@@ -324,7 +324,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   {
       printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
 
-      //robot->energy -= 2.5;
+      robot->energy -= 2.5;
       // Step 1: Look for incomming messages and take appropriate update
       
       list<RobotMessage>::iterator mit;
@@ -449,7 +449,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           FOR_EACH( it, fid->GetFiducials() )
           {
               ModelFiducial::Fiducial* other = &(*it);
-              sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 0); // The value is not important
+              sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 3); // The value is not important
           }
           setRobotState(robot, HOMING);
       }
@@ -468,7 +468,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       }
       else
       {
-          //setRobotState(robot, SEARCHING);
+          setRobotState(robot, SEARCHING);
       }
   }
   /* Actions Based on State - No State Transition Here */
