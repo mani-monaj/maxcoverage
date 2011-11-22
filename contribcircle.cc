@@ -13,7 +13,6 @@
 
 using namespace Stg;
 
-
 enum RobotState
 {
     UNKNOWN  = 0,
