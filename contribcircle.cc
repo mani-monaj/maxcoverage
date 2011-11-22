@@ -5,13 +5,14 @@
 #include <math.h>
 
 #include <ctime>
-#include <list.h>
-#include <deque.h>
+#include <list>
+#include <deque>
 #include <algorithm>
 
 #include "stage.hh"
 
 using namespace Stg;
+using namespace std;
 
 enum RobotState
 {
@@ -114,15 +115,22 @@ void updateMyInbox(robot_t* robot)
     //robot->inbox.clear();
     list<RobotMessage>::iterator i;
     RobotMessage msg;
-    for (i = MessageList.begin(); i != MessageList.end(); ++i)
+    
+    i = MessageList.begin();
+    while (i != MessageList.end())
     {
         msg = (*i);
         if (msg.receiver == robot->position->GetId())
         {
+            printf("2.5");
             robot->inbox.push_back(msg);
-            MessageList.erase(i);
+            MessageList.erase(i++);
         }
-    }
+        else
+        {
+            ++i;
+        }
+    }    
 }
 
 //void updateRobotBelief(robot_t robot, )
@@ -250,23 +258,16 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       //list<unsigned int> updated;
       //double tMax = 0.0;
       bool updated = false;
-      for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
+      mit = robot->inbox.begin();
+      while (mit != robot->inbox.end())
       {
           RobotMessage msg = *(mit);
           if (msg.type == WELCOME)
           {
-//              // Looking for most recent Message
-//              if (msg.t > tMax)
-//              {
-//                  tMax = msg.t;
-//                  updated = msg.ids;
-//              }
               updated = true;
               robot->teammates.push_back(msg.robotid);
           }
-      
-          // I am only looking for welcome messages, erase everything else
-          robot->inbox.erase(mit);
+          robot->inbox.erase(mit++);
       }
       
       
@@ -333,25 +334,29 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       bool joinleave = false;
       list<unsigned int> welcomeacklist;
       list<unsigned int> byeacklist;
-      for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
+      
+      mit = robot->inbox.begin();
+      while (mit != robot->inbox.end())
       {
           RobotMessage msg = *mit;
           if (msg.type == IAMCOMMING)
           {
               joinleave = true;
               robot->teammates.push_back(msg.sender);
-              welcomeacklist.push_back(msg.sender);
-              
-              robot->inbox.erase(mit);
+              welcomeacklist.push_back(msg.sender);              
+              robot->inbox.erase(mit++);
           }
           else if (msg.type == IAMLEAVING)
           {
               joinleave = true;
               robot->teammates.remove(msg.sender);
               byeacklist.push_back(msg.sender);
-              sendMessage(BYE, robot->position->GetId(), msg.sender, 0, 0); // Reply Back
-              
-              robot->inbox.erase(mit);
+              sendMessage(BYE, robot->position->GetId(), msg.sender, 0, 0); // Reply Back              
+              robot->inbox.erase(mit++);
+          }
+          else
+          {
+              ++mit;
           }
       }
       
@@ -391,17 +396,13 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       // Update your belief using INGROUP SYNC messages
       
       double tMax = 0.0;
-      for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
+      
+      mit = robot->inbox.begin();
+      while (mit != robot->inbox.end())
       {
           RobotMessage msg = *mit;
           if ((msg.type == ADDROBOT) || (msg.type == REMOVEROBOT))
-          {
-//              if (msg.t > tMax)
-//              {
-//                  updated = msg.ids;
-//                  tMax = msg.t;
-//              }
-              
+          {              
               if (msg.type == ADDROBOT)
               {
                   robot->teammates.push_back(msg.robotid);
@@ -421,36 +422,13 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
                   }
               }
           }
-          robot->inbox.erase(mit);
+          robot->inbox.erase(mit++);
       }
 
       robot->teammates.sort();
       robot->teammates.unique();
       
-//      if (updated.size() > 0)
-//      {
-//          robot->teammates.sort();
-//          updated.sort();
-//          robot->teammates.merge(updated);
-//          robot->teammates.unique();
-//      }
-     
-      
-      // Step 2: Send Sync Messages (Don't send messages to people you You said welcome!)
-      
-//      FOR_EACH( it, fid->GetFiducials() )
-//      {
-//          ModelFiducial::Fiducial* other = &(*it);
-//          
-//          bool found = false;
-//          for (iit = welcomeacklist.begin(); (iit != welcomeacklist.end()) && (!found); ++iit)
-//          {
-//              if (other->id == *iit) found = true;
-//          }
-//          
-//          if (!found) sendMessage(SYNC, robot->position->GetId(), other->id, robot->teammates); 
-//      }
-      
+           
       list<unsigned int>::iterator nit;
       for (nit = inGroupNeighbors.begin(); nit != inGroupNeighbors.end(); ++nit)
       {
