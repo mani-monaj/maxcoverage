@@ -68,7 +68,7 @@ typedef struct
 
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
-const double FWATT = 0.01;
+const double FWATT = 1.0;
 const double RMIN = 2.0;
 
 static list<RobotMessage> MessageList;
@@ -122,7 +122,6 @@ void updateMyInbox(robot_t* robot)
         msg = (*i);
         if (msg.receiver == robot->position->GetId())
         {
-            printf("2.5");
             robot->inbox.push_back(msg);
             MessageList.erase(i++);
         }
@@ -223,7 +222,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   /* This is some shared knowledge, let's say it's global now */
   
   static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
-  static double movementX = 1e-4;
+  static double movementX = 0.0;//1e-4;
   double att_dx = attCenter.x - robot->position->GetPose().x;
   double att_dy = attCenter.y - robot->position->GetPose().y;
   double att_d = sqrt( (att_dx * att_dx) + (att_dy * att_dy) );
@@ -325,7 +324,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   {
       printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
 
-      robot->energy -= 2.5;
+      //robot->energy -= 2.5;
       // Step 1: Look for incomming messages and take appropriate update
       
       list<RobotMessage>::iterator mit;
@@ -515,7 +514,8 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
         {
           ModelFiducial::Fiducial* other = &(*it);
           double rep_d = other->range;
-          double rep_theta = other->bearing;
+          double rep_theta = normalize(other->bearing + robot->position->GetPose().a);
+          //double rep_theta = other->
           rep_force = FREPMAX * (1.0 - (2.0 * (sigmoid(rep_d) - 0.5)) );
           rep_force_x = rep_force * cos(rep_theta);
           rep_force_y = rep_force * sin(rep_theta);
@@ -543,10 +543,11 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       double w_robot = 0.0;
       radians_t r_heading = robot->position->GetPose().a;
       radians_t angle_error = normalize ( normalize(att_theta + 3.1415) - r_heading);
+      //radians_t angle_error = normalize(att_theta + 3.1415) - r_heading;
+
       w_robot = FWATT * 2.0 * (sigmoid(angle_error) - 0.5);
 
-      w_robot = 0.0;
-      robot->position->SetSpeed( vx_robot, vy_robot, 0.0);
+      robot->position->SetSpeed( vx_robot, vy_robot, w_robot);
   }
   
   //robot->position->SetSpeed(0.0, 0.0, 1.0);
