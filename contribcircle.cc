@@ -187,7 +187,7 @@ extern "C" int Init( Model* mod )
 //      setRobotState(robot, INGROUP);
 //  }
   robot->fiducial->Subscribe();
-  //robot->ranger->Subscribe();
+  robot->ranger->Subscribe();
   robot->position->Subscribe();
 
   return 0; //ok
@@ -229,7 +229,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   /* This is some shared knowledge, let's say it's global now */
   
   static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
-  static double movementX = 0.0;//1e-4;
+  static double movementX = 1e-4;
   double att_dx = attCenter.x - robot->position->GetPose().x;
   double att_dy = attCenter.y - robot->position->GetPose().y;
   double att_d = sqrt( (att_dx * att_dx) + (att_dy * att_dy) );
@@ -528,7 +528,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 
       attCenter.x += movementX;
 
-      if (fabs(attCenter.x) > 4.0)
+      if (fabs(attCenter.x) > 8.0)
       {
           movementX = -1.0 * movementX;
       }

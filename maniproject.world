@@ -46,7 +46,7 @@ define agent pioneer2dx
   obstacle_return 0
 #  fiducial()
   fiducial( range_max_id 6 range_max 6 fov 359 pose [ 0 0 0 0 ] )
-#   fiducial( range_max 10 fov 359 pose [ 0 0 0 0 ] )  
+#   fiducial( range_max 5 fov 359 pose [ 0 0 0 0 ] )  
 
   localization "gps"
   localization_origin [ 0 0 0 0 ]
