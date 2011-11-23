@@ -14,6 +14,7 @@
 using namespace Stg;
 using namespace std;
 
+#define MAX_MESSAGE_LIST_SIZE 4096
 enum RobotState
 {
     UNKNOWN  = 0,
@@ -62,6 +63,7 @@ typedef struct
   deque<double> d2c; //This one is used to check if robot is in group
   
   double energy;
+  Stg::Pose charger;
 } robot_t;
 
 // Define const double XXX = YYYY; Here for global access during control
@@ -92,11 +94,16 @@ void setRobotState(robot_t* r, RobotState s)
 {
     r->state = s;
     r->position->SetColor(StateColors[s]);
+    r->inbox.clear();
+    r->d2c.clear();
 }
 
 // No Broadcast support yet ...
 void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, unsigned int rc)
 {
+//    if (MessageList.size() > MAX_MESSAGE_LIST_SIZE)
+//        return;
+    
     RobotMessage msg;
     msg.type = type;
     msg.t = getCurrentTimeStamp();
@@ -174,7 +181,7 @@ extern "C" int Init( Model* mod )
   
   robot->teammates.push_front(robot->position->GetId());
   setRobotState(robot, SEARCHING);
-  robot->energy = robot->position->GetId() * 1000.0;
+  robot->energy = 1000.0 + (robot->position->GetId() * 200.0);
 //  if (robot->position->GetId() == 2)
 //  {
 //      setRobotState(robot, INGROUP);
@@ -249,18 +256,20 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 //      printf("** From:%2d To:%2d Type:%d Val:%4.2f T:%10.2f\n", msg.sender, msg.receiver, msg.type, msg.val, msg.t);
 //  }
 //  
+  
+  printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
   if (robot->state == SEARCHING)
   {
       
       // Check if any WELCOME message received
       list<RobotMessage>::iterator mit;
-      //list<unsigned int> updated;
-      //double tMax = 0.0;
+
       bool updated = false;
       mit = robot->inbox.begin();
       while (mit != robot->inbox.end())
       {
           RobotMessage msg = *(mit);
+          //printf("From: %2d To: %2d Says: %2d \n", msg.sender, msg.receiver, msg.robotid);
           if (msg.type == WELCOME)
           {
               updated = true;
@@ -272,6 +281,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
       if (updated) // Hurray! Welcome Message Received
       {
+          //printf("Hurray ###################\n");
           setRobotState(robot, INGROUP);
           robot->teammates.sort();
           robot->teammates.unique();
@@ -322,7 +332,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   }
   else if (robot->state == INGROUP)
   {
-      printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
+      
 
       robot->energy -= 2.5;
       // Step 1: Look for incomming messages and take appropriate update
@@ -367,6 +377,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           for (tit = robot->teammates.begin(); tit != robot->teammates.end(); ++tit)
           {
               // Send all my teammates information to all people who told me they are coming!
+              //printf("*** WELCOME MESSAGE to %2d from %2d says %2d\n", robot->position->GetId(), *iit, *tit);
               sendMessage(WELCOME, robot->position->GetId(), *iit, *tit, 0); // Reply Back  
           }
       }
@@ -393,9 +404,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       }
       
       // Update your belief using INGROUP SYNC messages
-      
-      double tMax = 0.0;
-      
+            
       mit = robot->inbox.begin();
       while (mit != robot->inbox.end())
       {
@@ -406,12 +415,12 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
               {
                   robot->teammates.push_back(msg.robotid);
               }
-              else if (msg.type = REMOVEROBOT)
+              else if (msg.type == REMOVEROBOT)
               {
                   robot->teammates.remove(msg.robotid);
               }
               
-              inGroupNeighbors.remove(msg.sender);
+              //inGroupNeighbors.remove(msg.sender);
               if (msg.relaycount > 0)
               {
                   list<unsigned int>::iterator nit;
@@ -441,6 +450,14 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
               sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 3);
           }
           
+//          for (tit = robot->teammates.begin(); tit != robot->teammates.end(); ++tit)
+//          {
+//              if (*tit != *nit)
+//              {
+//                  sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 1);
+//              }
+//          }
+          
       }
       
       // Step 3: Check State Trnasitions for itself
@@ -449,21 +466,53 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           FOR_EACH( it, fid->GetFiducials() )
           {
               ModelFiducial::Fiducial* other = &(*it);
-              sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 3); // The value is not important
+              //printf("**** I AM LEAVING GUYZ: %d \n", robot->position->GetId());
+              sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 0); // The value is not important
           }
+          robot->teammates.clear();
+          
+          robot->charger = Stg::Pose::Random(-10.0, 10.0, -16.0, -10.0);
+          robot->position->Stop();
           setRobotState(robot, HOMING);
       }
+      
+      
   }
   else if (robot->state == HOMING)
   {
-      robot->position->SetPose(Stg::Pose::Random(-12.0, 12.0, -14.0, -10.0));
-      setRobotState(robot, CHARGING);
+      //robot->position->SetPose(Stg::Pose::Random(-12.0, 12.0, -14.0, -10.0));
+      
+      double h_dx = robot->charger.x - robot->position->GetPose().x;
+      double h_dy = robot->charger.y - robot->position->GetPose().y;
+      
+      double h_d = sqrt( (h_dx * h_dx) + (h_dy * h_dy) );
+      
+      if (h_d < 0.1)
+      {
+          setRobotState(robot,CHARGING);
+      }
+      else
+      {
+          double h_force = FATTMAX * 2.0 * (sigmoid(h_d) - 0.5);
+
+          double h_theta = atan2(h_dy, h_dx);
+
+          double h_force_x = h_force * cos(h_theta);
+          double h_force_y = h_force * sin(h_theta);
+
+          radians_t theta = robot->position->GetPose().a;
+          double vx_robot = ( cos(theta) * h_force_x) + (sin(theta) * h_force_y);
+          double vy_robot = (-sin(theta) * h_force_x) + (cos(theta) * h_force_y);
+
+          robot->position->SetSpeed(vx_robot, vy_robot, 0.0);
+      }
+      //setRobotState(robot, CHARGING);
   }
   else if (robot->state == CHARGING)
   {
       if (robot->energy < robot->position->GetId() * 1000.0)
       {
-          robot->energy += 100.0;
+          robot->energy += 10.0;
           robot->position->SetSpeed(0.0, 0.0, 0.0);
       }
       else
