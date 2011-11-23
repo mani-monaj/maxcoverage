@@ -187,7 +187,7 @@ extern "C" int Init( Model* mod )
 //      setRobotState(robot, INGROUP);
 //  }
   robot->fiducial->Subscribe();
-  robot->ranger->Subscribe();
+  //robot->ranger->Subscribe();
   robot->position->Subscribe();
 
   return 0; //ok
@@ -257,7 +257,8 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 //  }
 //  
   
-  printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
+  //printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
+  
   if (robot->state == SEARCHING)
   {
       
