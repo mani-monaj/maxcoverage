@@ -111,7 +111,38 @@ void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, u
     msg.robotid = rid;
     msg.relaycount = rc;
     
-    MessageList.push_back(msg);
+    /* 
+     * Do not insert duplicate messages
+     * Further consideration must taken into account:
+     * Timestamp
+     * RelayCount
+     * 
+     * It is a naive implementation, might become source of undesired behavior
+     * 
+     */
+    bool found = false;
+    list<RobotMessage>::iterator i;
+    
+    RobotMessage stored;
+    for (i = MessageList.begin(); (i != MessageList.end()); ++i)
+    {
+        stored = (*i);
+        if (
+                (msg.type == stored.type) &&
+                (msg.sender == stored.sender) &&
+                (msg.receiver == stored.receiver) &&
+                (msg.robotid == stored.robotid)
+           )
+        {
+            found = true;
+            break;
+        }
+    }
+    
+    if (!found)
+    {
+        MessageList.push_back(msg);
+    }
 }
 
 void updateMyInbox(robot_t* robot)
