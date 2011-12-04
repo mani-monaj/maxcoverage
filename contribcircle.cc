@@ -58,7 +58,6 @@ typedef struct
   radians_t closest_heading_error;
   list<RobotMessage> inbox;
   RobotState state;
-  //double belief;
   list<unsigned int> teammates;
   deque<double> d2c; //This one is used to check if robot is in group
   
@@ -109,8 +108,6 @@ void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, u
     msg.t = getCurrentTimeStamp();
     msg.sender = sender;
     msg.receiver = receiver;
-    //msg.val = val;
-    //msg.ids.assign(ids.begin(), ids.end());
     msg.robotid = rid;
     msg.relaycount = rc;
     
@@ -119,7 +116,6 @@ void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, u
 
 void updateMyInbox(robot_t* robot)
 {
-    //robot->inbox.clear();
     list<RobotMessage>::iterator i;
     RobotMessage msg;
     
@@ -182,14 +178,13 @@ extern "C" int Init( Model* mod )
   robot->teammates.push_front(robot->position->GetId());
   setRobotState(robot, SEARCHING);
   robot->energy = 1000.0 + (robot->position->GetId() * 200.0);
-//  if (robot->position->GetId() == 2)
-//  {
-//      setRobotState(robot, INGROUP);
-//  }
+
   robot->fiducial->Subscribe();
   robot->ranger->Subscribe();
   robot->position->Subscribe();
 
+  
+  printf("I am damn robot %d \n", robot->position->GetId());
   return 0; //ok
 }
 
@@ -217,15 +212,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
         }
     }
 
-//  if( robot->closest ) // if we saw someone
-//    {
-//      robot->closest_bearing = robot->closest->bearing;
-//      robot->closest_range = robot->closest->range;
-//      robot->closest_heading_error = robot->closest->geom.a;
-//    }
-//  
-  //printf("Position of %d : %6.4f %6.4f \n", robot->position->GetId(), robot->position->GetPose().x, robot->position->GetPose().y);
-
   /* This is some shared knowledge, let's say it's global now */
   
   static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
@@ -240,22 +226,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       robot->d2c.pop_back();
   }
   
-  updateMyInbox(robot);
-  
-  /* Message Parsing */
-  
-  /* End Message Parsing */
-  
-  /* State Based Communication and Transitions */
-  
-  
-//  list<RobotMessage>::iterator mit;
-//  for (mit = robot->inbox.begin(); mit != robot->inbox.end(); ++mit)
-//  {
-//      RobotMessage msg = *mit;
-//      printf("** From:%2d To:%2d Type:%d Val:%4.2f T:%10.2f\n", msg.sender, msg.receiver, msg.type, msg.val, msg.t);
-//  }
-//  
+  updateMyInbox(robot);  
   
   //printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
   
@@ -282,7 +253,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
       if (updated) // Hurray! Welcome Message Received
       {
-          //printf("Hurray ###################\n");
           setRobotState(robot, INGROUP);
           robot->teammates.sort();
           robot->teammates.unique();
@@ -310,7 +280,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           meand /= robot->d2c.size();
           if (meand < 0.01)
           {
-              //printf("I am robot %d and just promoted!\n", robot->position->GetId());
               setRobotState(robot, INGROUP);
               FOR_EACH( it, fid->GetFiducials() )
               {
@@ -377,8 +346,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       {
           for (tit = robot->teammates.begin(); tit != robot->teammates.end(); ++tit)
           {
-              // Send all my teammates information to all people who told me they are coming!
-              //printf("*** WELCOME MESSAGE to %2d from %2d says %2d\n", robot->position->GetId(), *iit, *tit);
               sendMessage(WELCOME, robot->position->GetId(), *iit, *tit, 0); // Reply Back  
           }
       }
@@ -451,14 +418,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
               sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 3);
           }
           
-//          for (tit = robot->teammates.begin(); tit != robot->teammates.end(); ++tit)
-//          {
-//              if (*tit != *nit)
-//              {
-//                  sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 1);
-//              }
-//          }
-          
       }
       
       // Step 3: Check State Trnasitions for itself
@@ -467,7 +426,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           FOR_EACH( it, fid->GetFiducials() )
           {
               ModelFiducial::Fiducial* other = &(*it);
-              //printf("**** I AM LEAVING GUYZ: %d \n", robot->position->GetId());
               sendMessage(IAMLEAVING, robot->position->GetId(), other->id, 0, 0); // The value is not important
           }
           robot->teammates.clear();
@@ -481,7 +439,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   }
   else if (robot->state == HOMING)
   {
-      //robot->position->SetPose(Stg::Pose::Random(-12.0, 12.0, -14.0, -10.0));
       
       double h_dx = robot->charger.x - robot->position->GetPose().x;
       double h_dy = robot->charger.y - robot->position->GetPose().y;
@@ -507,7 +464,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 
           robot->position->SetSpeed(vx_robot, vy_robot, 0.0);
       }
-      //setRobotState(robot, CHARGING);
   }
   else if (robot->state == CHARGING)
   {
@@ -521,6 +477,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           setRobotState(robot, SEARCHING);
       }
   }
+  
   /* Actions Based on State - No State Transition Here */
   if ((robot->state == SEARCHING) || (robot->state == INGROUP))  
   {
@@ -532,8 +489,6 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       {
           movementX = -1.0 * movementX;
       }
-
-      //printf("Error of %d : %6.4f %6.4f \n", robot->position->GetId(), att_dx, att_dy);
       
 
       double att_force;
@@ -559,23 +514,18 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       double sum_force_x = att_force_x;
       double sum_force_y = att_force_y;
 
-      //printf("I am robot #%2d and my time is %8.4f, my buddies are: ", robot->position->GetId(), getCurrentTimeStamp());
       FOR_EACH( it, fid->GetFiducials() )
         {
           ModelFiducial::Fiducial* other = &(*it);
           double rep_d = other->range;
           double rep_theta = normalize(other->bearing + robot->position->GetPose().a);
-          //double rep_theta = other->
           rep_force = FREPMAX * (1.0 - (2.0 * (sigmoid(rep_d) - 0.5)) );
           rep_force_x = rep_force * cos(rep_theta);
           rep_force_y = rep_force * sin(rep_theta);
 
           sum_force_x += rep_force_x;
           sum_force_y += rep_force_y;
-          //printf("%d,", other->id);
         }
-      //printf("\n");
-
 
       // Forward Kinematic Model (Point Robot)
 
@@ -600,6 +550,5 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       robot->position->SetSpeed( vx_robot, vy_robot, w_robot);
   }
   
-  //robot->position->SetSpeed(0.0, 0.0, 1.0);
   return 0;
 }
