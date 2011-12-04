@@ -14,7 +14,6 @@
 using namespace Stg;
 using namespace std;
 
-#define MAX_MESSAGE_LIST_SIZE 4096
 enum RobotState
 {
     UNKNOWN  = 0,
@@ -39,9 +38,7 @@ struct RobotMessage {
     MessageType type;
     unsigned int sender;
     unsigned int receiver;
-    double t;
-    //double val;
-    
+    double t;    
     unsigned int robotid;
     unsigned int relaycount;
 };
@@ -66,6 +63,10 @@ typedef struct
 } robot_t;
 
 // Define const double XXX = YYYY; Here for global access during control
+
+const int NUMBEROFROBOTS = 18; //For Performance analysis as well as home point calculation
+list<Stg::Pose> HomePositions;
+bool isGlobalInitDone = false;
 
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
@@ -182,11 +183,25 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot );
 
 extern "C" int Init( Model* mod )
 {
+ 
   srand ( time(NULL) );
-  robot_t* robot = new robot_t;
-  robot->position = (ModelPosition*)mod;
-
   
+  if (isGlobalInitDone == false)
+  {
+      printf("\nDoing one time init process ... \n");
+      Stg::Pose center(0.0, -14.0, 0.0, 0.0);
+      Stg::Pose p;
+      for (int i = 0; i < NUMBEROFROBOTS; i++)
+      {
+          p = center;
+          p.x = (i - int(NUMBEROFROBOTS / 2)) * 1.2;
+          HomePositions.push_front(p);
+      }
+      isGlobalInitDone = true;
+  }
+  
+  robot_t* robot = new robot_t;
+  robot->position = (ModelPosition*)mod;  
 
   // subscribe to the ranger, which we use for navigating
   robot->ranger = (ModelRanger*)mod->GetUnusedModelOfType( "ranger" );
@@ -196,26 +211,27 @@ extern "C" int Init( Model* mod )
   robot->ranger->AddCallback( Model::CB_UPDATE, (model_callback_t)RangerUpdate, robot );
 
   robot->fiducial = (ModelFiducial*)mod->GetUnusedModelOfType( "fiducial" ) ;
-  robot->position->SetFiducialReturn(robot->position->GetId());
- 
+  
   assert( robot->fiducial );
-  
-  /* Each robot transmits its ID via fiducial */
-  
-  
+    
   robot->fiducial->AddCallback( Model::CB_UPDATE, (model_callback_t)FiducialUpdate, robot );
   
-  
+  // Per robot init
+  robot->position->SetFiducialReturn(robot->position->GetId());
+  robot->charger = HomePositions.front();
+  HomePositions.pop_front();
+  robot->position->SetPose(robot->charger);
   robot->teammates.push_front(robot->position->GetId());
   setRobotState(robot, SEARCHING);
   robot->energy = 1000.0 + (robot->position->GetId() * 200.0);
+  
+  
 
   robot->fiducial->Subscribe();
   robot->ranger->Subscribe();
   robot->position->Subscribe();
 
-  
-  printf("I am damn robot %d \n", robot->position->GetId());
+  printf("I am damn robot %d and my root id is %d \n", robot->position->GetId(), robot->position->Root()->GetId());
   return 0; //ok
 }
 
@@ -227,7 +243,7 @@ int RangerUpdate( ModelRanger* rgr, robot_t* robot )
 int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 {
   // find the closest teammate
-
+    
   double dist = 1e6; // big
 
   robot->closest = NULL;
@@ -461,7 +477,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           }
           robot->teammates.clear();
           
-          robot->charger = Stg::Pose::Random(-10.0, 10.0, -16.0, -10.0);
+          //robot->charger = Stg::Pose::Random(-10.0, 10.0, -16.0, -10.0);
           robot->position->Stop();
           setRobotState(robot, HOMING);
       }
