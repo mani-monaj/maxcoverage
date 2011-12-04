@@ -68,6 +68,8 @@ static const int NUMBEROFROBOTS = 18; //For Performance analysis as well as home
 static list<Stg::Pose> HomePositions;
 static bool isGlobalInitDone = false;
 static int loggerID; // The first robot who become active in Stage, logs everything
+static int NUMBEROFSEARCHINGROBOTS = 0; //For Performance analysis
+static double timeorigin;
 
 
 const double FATTMAX = 1.0;
@@ -94,6 +96,16 @@ double getCurrentTimeStamp()
 
 void setRobotState(robot_t* r, RobotState s)
 {
+    /* For analysis */
+    if ((r->state != INGROUP) && (s == INGROUP))
+    {
+        NUMBEROFSEARCHINGROBOTS++;
+    }
+    else if ((r->state == INGROUP) && (s != INGROUP))
+    {
+        NUMBEROFSEARCHINGROBOTS--;
+    }
+    /* end */
     r->state = s;
     r->position->SetColor(StateColors[s]);
     r->inbox.clear();
@@ -188,9 +200,14 @@ extern "C" int Init( Model* mod )
  
   srand ( time(NULL) );
   
+  robot_t* robot = new robot_t;
+  robot->position = (ModelPosition*)mod;  
+  
   if (isGlobalInitDone == false)
   {
-      printf("\nDoing one time init process ... \n");
+      loggerID = robot->position->GetId();
+      timeorigin = getCurrentTimeStamp();
+      printf("\nDoing one time init process, logger robot is %d \n", loggerID);
       Stg::Pose center(0.0, -14.0, 0.0, 0.0);
       Stg::Pose p;
       for (int i = 0; i < NUMBEROFROBOTS; i++)
@@ -202,8 +219,7 @@ extern "C" int Init( Model* mod )
       isGlobalInitDone = true;
   }
   
-  robot_t* robot = new robot_t;
-  robot->position = (ModelPosition*)mod;  
+  
 
   // subscribe to the ranger, which we use for navigating
   robot->ranger = (ModelRanger*)mod->GetUnusedModelOfType( "ranger" );
@@ -233,7 +249,7 @@ extern "C" int Init( Model* mod )
   robot->ranger->Subscribe();
   robot->position->Subscribe();
 
-  printf("I am damn robot %d and my root id is %d \n", robot->position->GetId(), robot->position->Root()->GetId());
+  //printf("I am damn robot %d and my root id is %d \n", robot->position->GetId(), robot->position->Root()->GetId());
   return 0; //ok
 }
 
@@ -278,6 +294,16 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   updateMyInbox(robot);  
   
   //printf("I am robot %d, I think there are %d bots in the world. [In: %4d][E: %4.2f] \n", robot->position->GetId(), robot->teammates.size(), robot->inbox.size(), robot->energy);
+  
+  if (robot->position->GetId() == loggerID)
+  {
+      printf("\n%8.4f, %d,", 0.0, NUMBEROFSEARCHINGROBOTS);
+  }
+  
+  if (robot->state == INGROUP)
+  {
+      printf("%d,", (int) robot->teammates.size());
+  }
   
   if (robot->state == SEARCHING)
   {
@@ -459,12 +485,12 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       {
           for (tit = welcomeacklist.begin(); tit != welcomeacklist.end(); ++tit)
           {
-              sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 3);
+              sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 1);
           }
           
           for (tit = byeacklist.begin(); tit != byeacklist.end(); ++tit)
           {
-              sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 3);
+              sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 1);
           }
           
       }
