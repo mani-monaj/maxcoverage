@@ -64,9 +64,11 @@ typedef struct
 
 // Define const double XXX = YYYY; Here for global access during control
 
-const int NUMBEROFROBOTS = 18; //For Performance analysis as well as home point calculation
-list<Stg::Pose> HomePositions;
-bool isGlobalInitDone = false;
+static const int NUMBEROFROBOTS = 18; //For Performance analysis as well as home point calculation
+static list<Stg::Pose> HomePositions;
+static bool isGlobalInitDone = false;
+static int loggerID; // The first robot who become active in Stage, logs everything
+
 
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
