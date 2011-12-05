@@ -35,14 +35,14 @@ ub = b + s;
 lb = b - s;
 
 plot(t, ub, 'color', [0.8 0.8 0.8], 'Marker', '.', 'LineStyle', 'none', 'MarkerSize', 6);
-plot(t, lb, 'color', [0.8 0.8 0.8], 'Marker', '.', 'LineStyle', 'none', 'MarkerSize', 6);
 hold on;
+plot(t, lb, 'color', [0.8 0.8 0.8], 'Marker', '.', 'LineStyle', 'none', 'MarkerSize', 6);
 plot(t,n,t,b);
 hold off;
-title(plottitle);
+title(sprintf('%s (RMS Err: %6.4f)', plottitle, err));
 ylabel('Number of Robots');
 xlabel('time (ms)');
-legend('Std Dev','Actual Number of robots','Mean of robot beleifs');
+legend('Std Dev', 'Std Dev','Actual Number of robots','Mean of robot beleifs', 'Location', 'South');
 grid on;
 
 
