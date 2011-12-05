@@ -1,3 +1,13 @@
 This project is for SFU CS889 course project.
 
 The project framework has been forked from: https://github.com/rtv/stagectrl.git
+
+Command Line Usage
+
+`stage -g -c --args "--disabled --leader --relaycount N" ./maniproject.world 2>log.txt1
+
+-g -c		Stage Command Lines (Disable GUI, show clock)
+--disabled	Disable robot belief usage in Circle algorithm [Default: false]
+--leader	Start with one robot as INGROUP [Default : false]
+--relaycount N	Number of relays per message (selected messages only) [Default: 3]
+

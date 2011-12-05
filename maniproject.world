@@ -48,7 +48,7 @@ define agent pioneer2dx_front_sonar
   fiducial_return 2
   obstacle_return 0
 #  fiducial()
-  fiducial( range_max_id 6 range_max 6 fov 359 pose [ 0 0 0 0 ] )
+  fiducial( range_max_id 3 range_max 3 fov 359 pose [ 0 0 0 0 ] )
 #   fiducial( range_max 1 fov 359 pose [ 0 0 0 0 ] )  
 
   localization "gps"
