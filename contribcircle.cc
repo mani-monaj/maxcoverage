@@ -117,6 +117,7 @@ void setRobotState(robot_t* r, RobotState s)
     r->position->SetColor(StateColors[s]);
     r->inbox.clear();
     r->d2c.clear();
+    
 }
 
 // No Broadcast support yet ...
@@ -165,6 +166,7 @@ void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, u
     {
         totalMessageCounterMy++;
         MessageList.push_back(msg);
+        
     }
 }
 
@@ -346,6 +348,14 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   if (robot->position->GetId() == loggerID)
   {
       fprintf(stderr, "\n%ld,%ld,%ld,%d,", (unsigned long int) (robot->position->GetWorld()->SimTimeNow() /1000.0), totalMessageCounterNaive, totalMessageCounterMy, NUMBEROFSEARCHINGROBOTS);
+//      std::set<Stg::Model*>::iterator modit;
+//      std::set<Stg::Model*> allModels = robot->position->GetWorld()->GetAllModels();
+//      for (modit = allModels.begin(); modit !=allModels.end(); ++ modit )
+//      {
+//          Stg::Model* mod = *(modit);
+//          Stg::ModelPosition* rPos = (Stg::ModelPosition*) mod;
+//          printf("*** Robot %d @ <%6.4f, %6.4f>\n", rPos->GetId(), rPos->GetPose().x, rPos->GetPose().y);
+//      }
   }
   
   if (robot->state == INGROUP)
