@@ -5,15 +5,17 @@
 include "pioneer.inc"
 include "map.inc"
 
-speedup -1
-
+speedup 100
 paused 1
+
+# stop Stage after x seconds, 0 = run forever
+quit_time 360.0
 
 # low resolution gives fast raytracing. set this only as small as you need for your application
 resolution 0.02
 
 # this is very helpful if you have multiple CPUs - a good value is $(number of CPU cores) - 
-# threads 1
+ threads 2
 
 # configure the GUI window
 window
@@ -36,8 +38,9 @@ floorplan
 
 #define agent pioneer2dx_front_sonar
 #define agent pioneer3dx
-define agent pioneer2dx
+#define agent pioneer2dx
 #define agent fancypioneer2dx
+define agent pioneer2dx_front_sonar
 (		  
   color "random"
 #  ctrl "pioneer_flocking"

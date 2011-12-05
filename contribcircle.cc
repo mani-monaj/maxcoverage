@@ -69,7 +69,12 @@ static list<Stg::Pose> HomePositions;
 static bool isGlobalInitDone = false;
 static int loggerID; // The first robot who become active in Stage, logs everything
 static int NUMBEROFSEARCHINGROBOTS = 0; //For Performance analysis
-static double timeorigin;
+static double timeOrigin;
+static bool bEnabled = true; //Behaviour Enabled
+static bool leaderEnabled = false;
+static int globalRelayCount = 3;
+static long int totalMessageCounterNaive = (NUMBEROFROBOTS * (NUMBEROFROBOTS - 1)) / 2;
+static long int totalMessageCounterMy = 0;
 
 
 const double FATTMAX = 1.0;
@@ -99,10 +104,12 @@ void setRobotState(robot_t* r, RobotState s)
     /* For analysis */
     if ((r->state != INGROUP) && (s == INGROUP))
     {
+        totalMessageCounterNaive += NUMBEROFROBOTS;
         NUMBEROFSEARCHINGROBOTS++;
     }
     else if ((r->state == INGROUP) && (s != INGROUP))
     {
+        totalMessageCounterNaive += NUMBEROFROBOTS;
         NUMBEROFSEARCHINGROBOTS--;
     }
     /* end */
@@ -156,6 +163,7 @@ void sendMessage(MessageType type, int sender, int receiver, unsigned int rid, u
     
     if (!found)
     {
+        totalMessageCounterMy++;
         MessageList.push_back(msg);
     }
 }
@@ -195,7 +203,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot );
 
 // Stage calls this when the model starts up
 
-extern "C" int Init( Model* mod )
+extern "C" int Init( Model* mod, CtrlArgs* args )
 {
  
   srand ( time(NULL) );
@@ -206,7 +214,7 @@ extern "C" int Init( Model* mod )
   if (isGlobalInitDone == false)
   {
       loggerID = robot->position->GetId();
-      timeorigin = getCurrentTimeStamp();
+      timeOrigin = getCurrentTimeStamp();
       printf("\nDoing one time init process, logger robot is %d \n", loggerID);
       Stg::Pose center(0.0, -14.0, 0.0, 0.0);
       Stg::Pose p;
@@ -217,8 +225,44 @@ extern "C" int Init( Model* mod )
           HomePositions.push_front(p);
       }
       isGlobalInitDone = true;
+
+      
+      if (args->cmdline.find("--disabled") != std::string::npos)
+      {
+          printf("[ARG] Usage of knowledge disabled.\n");
+          bEnabled = false;
+      }
+      else
+      {
+          printf("[ARG] Usage of knowledge enabled.\n");
+      }
+      
+      if (args->cmdline.find("--leader") != std::string::npos)
+      {
+          printf("[ARG] One robot will start as INGROUP.\n");
+          leaderEnabled = true;
+      }
+      else
+      {
+          printf("[ARG] No robot will start as INGROUP.\n");
+      }
+      
+      size_t found = args->cmdline.find("--relaycount");
+      if (found != std::string::npos)
+      {
+          globalRelayCount = atoi(args->cmdline.substr(found+12, args->cmdline.length()).c_str());
+      }
+      
+      if (globalRelayCount <= 0)
+      {
+        printf("[ERROR] Invalid Relay Count! \n");
+        exit(1);
+      }
+      else
+      {
+        printf("[ARG] Relay Count : %d \n", globalRelayCount);
+      }
   }
-  
   
 
   // subscribe to the ranger, which we use for navigating
@@ -241,6 +285,10 @@ extern "C" int Init( Model* mod )
   robot->position->SetPose(robot->charger);
   robot->teammates.push_front(robot->position->GetId());
   setRobotState(robot, SEARCHING);
+  if ((robot->position->GetId() == loggerID) && (leaderEnabled))
+  {
+      setRobotState(robot, INGROUP);
+  }
   robot->energy = 1000.0 + (robot->position->GetId() * 200.0);
   
   
@@ -297,13 +345,17 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   
   if (robot->position->GetId() == loggerID)
   {
-      printf("\n%8.4f, %d,", 0.0, NUMBEROFSEARCHINGROBOTS);
+      fprintf(stderr, "\n%ld,%ld,%ld,%d,", (unsigned long int) (robot->position->GetWorld()->SimTimeNow() /1000.0), totalMessageCounterNaive, totalMessageCounterMy, NUMBEROFSEARCHINGROBOTS);
   }
   
   if (robot->state == INGROUP)
   {
-      printf("%d,", (int) robot->teammates.size());
+      fprintf(stderr, "%d,", (int) robot->teammates.size());
   }
+//  else
+//  {
+//      fprintf(stderr, "\"\",");
+//  }
   
   if (robot->state == SEARCHING)
   {
@@ -485,12 +537,12 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       {
           for (tit = welcomeacklist.begin(); tit != welcomeacklist.end(); ++tit)
           {
-              sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, 1);
+              sendMessage(ADDROBOT, robot->position->GetId(), *nit, *tit, globalRelayCount);
           }
           
           for (tit = byeacklist.begin(); tit != byeacklist.end(); ++tit)
           {
-              sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, 1);
+              sendMessage(REMOVEROBOT, robot->position->GetId(), *nit, *tit, globalRelayCount);
           }
           
       }
@@ -505,10 +557,10 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
           }
           robot->teammates.clear();
           
-          //robot->charger = Stg::Pose::Random(-10.0, 10.0, -16.0, -10.0);
           robot->position->Stop();
           setRobotState(robot, HOMING);
       }
+      
       
       
   }
@@ -567,7 +619,10 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
 
       double att_force;
-      double rmin_adaptive = RMIN + ((double) robot->teammates.size() / 4.0);
+      
+      /* This function must be calculated via Computation Geometery Methods*/
+      
+      double rmin_adaptive = RMIN + ((bEnabled) ? ((double) robot->teammates.size() / 4.0) : 0.0);
       if (att_d < rmin_adaptive)
       {
           att_force = -FATTMAX;
