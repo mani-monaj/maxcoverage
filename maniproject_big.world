@@ -9,7 +9,7 @@ speedup -1
 paused 1
 
 # stop Stage after x seconds, 0 = run forever
-quit_time 1200.0
+quit_time 3600.0
 
 # low resolution gives fast raytracing. set this only as small as you need for your application
 resolution 0.02
@@ -31,7 +31,7 @@ window
 floorplan
 (				
   name "blank"
-  size [40.000 40.000 0.800]
+  size [80.000 80.000 0.800]
   pose [0 0 0 0]
   bitmap "bitmaps/rink.png"  
 )
@@ -48,7 +48,7 @@ define agent pioneer2dx_front_sonar
   fiducial_return 2
   obstacle_return 0
 #  fiducial()
-  fiducial( range_max_id 9 range_max 9 fov 359 pose [ 0 0 0 0 ] )
+  fiducial( range_max_id 5 range_max 5 fov 359 pose [ 0 0 0 0 ] )
 #   fiducial( range_max 1 fov 359 pose [ 0 0 0 0 ] )  
 
   localization "gps"
@@ -56,6 +56,28 @@ define agent pioneer2dx_front_sonar
   gui_nose 1
   drive "omni"
 )
+
+agent( pose [ -5 -3 0 0 ] )
+agent( pose [ -5 5 0 0 ] )
+agent( pose [ 5 3 0 0 ] )
+agent( pose [ 7 -1 0 0 ] )
+agent( pose [ 3 -3 0 0 ] )
+agent( pose [ 5 -3 0 0 ] )
+
+agent( pose [ -5 -5 0 0 ] )
+agent( pose [ 5 -4.5 0 0 ] )
+agent( pose [ 6.2 1.5 0 0 ] )
+agent( pose [ -3.3 -0.5 0 0 ] )
+
+agent( pose [ -3 -3 0 0 ] )
+agent( pose [ 7 -2.2 0 0 ] )
+agent( pose [ -6 -4 0 0 ] )
+agent( pose [ -2 1.5 0 0 ] )
+
+agent( pose [ -4 -1 0 0 ] )
+agent( pose [ 8 2.2 0 0 ] )
+agent( pose [ 6.5 0 0 0 ] )
+agent( pose [ -7 -11 0 0 ] )
 
 agent( pose [ -5 -3 0 0 ] )
 agent( pose [ -5 5 0 0 ] )

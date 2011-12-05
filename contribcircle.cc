@@ -64,7 +64,7 @@ typedef struct
 
 // Define const double XXX = YYYY; Here for global access during control
 
-static const int NUMBEROFROBOTS = 18; //For Performance analysis as well as home point calculation
+static int NUMBEROFROBOTS = 36; //For Performance analysis as well as home point calculation
 static list<Stg::Pose> HomePositions;
 static bool isGlobalInitDone = false;
 static int loggerID; // The first robot who become active in Stage, logs everything
@@ -218,8 +218,14 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       loggerID = robot->position->GetId();
       timeOrigin = getCurrentTimeStamp();
       printf("\nDoing one time init process, logger robot is %d \n", loggerID);
+      
+      // Very Experimental
+      NUMBEROFROBOTS = (int) robot->position->GetWorld()->GetChildren().size() - 2;
+      printf("[CLC] Number of Robots in the world file: %d\n", NUMBEROFROBOTS);
+      
       Stg::Pose center(0.0, -14.0, 0.0, 0.0);
       Stg::Pose p;
+      
       for (int i = 0; i < NUMBEROFROBOTS; i++)
       {
           p = center;
@@ -228,7 +234,6 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       }
       isGlobalInitDone = true;
 
-      
       if (args->cmdline.find("--disabled") != std::string::npos)
       {
           printf("[ARG] Usage of knowledge disabled.\n");
