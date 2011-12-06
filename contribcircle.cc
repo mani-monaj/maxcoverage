@@ -71,6 +71,7 @@ static int loggerID; // The first robot who become active in Stage, logs everyth
 static int NUMBEROFSEARCHINGROBOTS = 0; //For Performance analysis
 static double timeOrigin;
 static bool bEnabled = true; //Behaviour Enabled
+static bool energyEnabled = true; //Enerrgy Consumption
 static bool leaderEnabled = false;
 static int globalRelayCount = 3;
 static long int totalMessageCounterNaive = (NUMBEROFROBOTS * (NUMBEROFROBOTS - 1)) / 2;
@@ -242,6 +243,16 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       else
       {
           printf("[ARG] Usage of knowledge enabled.\n");
+      }
+      
+      if (args->cmdline.find("--noenergy") != std::string::npos)
+      {
+          printf("[ARG] Usage of energy disabled.\n");
+          energyEnabled = false;
+      }
+      else
+      {
+          printf("[ARG] Usage of energy enabled.\n");
       }
       
       if (args->cmdline.find("--leader") != std::string::npos)
@@ -446,7 +457,11 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   {
       
 
-      robot->energy -= 2.5;
+      //Naive energy consumption model (note only in INGROUP mode)
+      if (energyEnabled == true)
+      {
+        robot->energy -= 2.5;
+      }
       // Step 1: Look for incomming messages and take appropriate update
       
       list<RobotMessage>::iterator mit;
@@ -638,6 +653,8 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       /* This function must be calculated via Computation Geometery Methods*/
       
       double rmin_adaptive = RMIN + ((bEnabled) ? ((double) robot->teammates.size() / 4.0) : 0.0);
+      
+      rmin_adaptive = 12.0;
       if (att_d < rmin_adaptive)
       {
           att_force = -FATTMAX;
