@@ -9,7 +9,7 @@ speedup -1
 paused 1
 
 # stop Stage after x seconds, 0 = run forever
-quit_time 1200.0
+#quit_time 1200.0
 
 # low resolution gives fast raytracing. set this only as small as you need for your application
 resolution 0.02
@@ -40,7 +40,8 @@ floorplan
 #define agent pioneer3dx
 #define agent pioneer2dx
 #define agent fancypioneer2dx
-define agent pioneer2dx_front_sonar
+#define agent pioneer2dx_front_sonar
+define agent pioneer2dx_base_no_sonar
 (		  
   color "random"
 #  ctrl "pioneer_flocking"
@@ -69,12 +70,12 @@ agent( pose [ 5 -4.5 0 0 ] )
 agent( pose [ 6.2 1.5 0 0 ] )
 agent( pose [ -3.3 -0.5 0 0 ] )
 
-agent( pose [ -3 -3 0 0 ] )
-agent( pose [ 7 -2.2 0 0 ] )
-agent( pose [ -6 -4 0 0 ] )
-agent( pose [ -2 1.5 0 0 ] )
+#agent( pose [ -3 -3 0 0 ] )
+#agent( pose [ 7 -2.2 0 0 ] )
+#agent( pose [ -6 -4 0 0 ] )
+#agent( pose [ -2 1.5 0 0 ] )
 
-agent( pose [ -4 -1 0 0 ] )
-agent( pose [ 8 2.2 0 0 ] )
-agent( pose [ 6.5 0 0 0 ] )
-agent( pose [ -7 -11 0 0 ] )
+#agent( pose [ -4 -1 0 0 ] )
+#agent( pose [ 8 2.2 0 0 ] )
+#agent( pose [ 6.5 0 0 0 ] )
+#agent( pose [ -7 -11 0 0 ] )

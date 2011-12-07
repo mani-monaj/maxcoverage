@@ -46,7 +46,7 @@ struct RobotMessage {
 typedef struct
 {
   ModelPosition* position;
-  ModelRanger* ranger; //Sonar Sensor
+  //ModelRanger* ranger; //Sonar Sensor
   ModelFiducial* fiducial;
 
   ModelFiducial::Fiducial* closest;
@@ -74,6 +74,8 @@ static bool bEnabled = true; //Behaviour Enabled
 static bool energyEnabled = true; //Enerrgy Consumption
 static bool leaderEnabled = false;
 static int globalRelayCount = 3;
+static double robotCameraFOV = 60.0;
+static double robotCameraDepth = 1.0;
 static long int totalMessageCounterNaive = (NUMBEROFROBOTS * (NUMBEROFROBOTS - 1)) / 2;
 static long int totalMessageCounterMy = 0;
 
@@ -81,7 +83,7 @@ static long int totalMessageCounterMy = 0;
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
 const double FWATT = 1.0;
-const double RMIN = 2.0;
+const double RMIN = 0.0;
 
 static list<RobotMessage> MessageList;
 
@@ -192,15 +194,87 @@ void updateMyInbox(robot_t* robot)
     }    
 }
 
+/* Golden!*/
+double calc_r(int N)
+{
+    if (N == 1) return 0.0;
+    double theta = (2 * 3.1415) / double(N);
+    double intr = (1.0 - cos(robotCameraFOV - theta)) / (1.0 - cos(theta));
+    
+    //TODO: extreme cases
+    if (intr < 0)
+    {
+        return 0;
+    }
+    else
+    {
+        return robotCameraDepth * sqrt(intr);
+    }
+}
 //void updateRobotBelief(robot_t robot, )
 double sigmoid(double x)
 {
     return 1.0 / (1.0 + exp(-1.0 * x));
 }
 
+class CCVis : public Visualizer
+{
+  public:    
+    robot_t& rob;
+    int res;
+    vector<Stg::Pose> vertx;
+    CCVis( robot_t& rob ) 
+      : Visualizer( "Make Circle", "vis_make_circle" ), rob(rob), res(8) 
+    {
+        
+    }
+    virtual ~CCVis()
+    {
+        
+    }
+    
+    virtual void Visualize( Model* mod, Camera* cam )
+    {
+      glPointSize( 8.0 );
+ 
+      glPushMatrix();
+      
+      //glRotatef( -rtod(mod->GetGlobalPose().a), 0,0,1 );
+      
+      GLdouble x = robotCameraDepth;
+      GLdouble y = 0.0;
+      GLdouble a = robotCameraFOV / 2.0;
+      
+      GLdouble dtheta = robotCameraFOV / double(res);
+      
+      GLdouble vx, vy;
+      GLdouble theta = -a;
+      while (theta <= a)
+      {
+       
+          vx = (cos(theta) * x) + (-sin(theta) * y);
+          vy = (sin(theta) * x) + ( cos(theta) * y);
+          
+          vertx.push_back(*(new Pose(vx,vy,0.0,0.0)));
+          
+          theta += dtheta;
+      }
+           
+      mod->PushColor(1.0, 0.0, 0.0, 0.15);
+      
+      glBegin( GL_POLYGON );
+          glVertex2f( 0.0, 0.0 );
+          for (int i = 0; i < vertx.size(); ++i)
+          {
+                glVertex2f( vertx.at(i).x,  vertx.at(i).y);          
+          }
+      glEnd();      
+      glPopMatrix();
+    }
+};
 
 // forward declare
-int RangerUpdate( ModelRanger* mod, robot_t* robot );
+//int RangerUpdate( ModelRanger* mod, robot_t* robot );
 int FiducialUpdate( ModelFiducial* fid, robot_t* robot );
 
 
@@ -268,7 +342,9 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       size_t found = args->cmdline.find("--relaycount");
       if (found != std::string::npos)
       {
-          globalRelayCount = atoi(args->cmdline.substr(found+12, args->cmdline.length()).c_str());
+          size_t nextdash = args->cmdline.find("--", found);
+          size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
+          globalRelayCount = atoi(args->cmdline.substr(found+12, endsearch).c_str());
       }
       
       if (globalRelayCount <= 0)
@@ -280,15 +356,54 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       {
         printf("[ARG] Relay Count : %d \n", globalRelayCount);
       }
+      
+      found = args->cmdline.find("--fov");
+      if (found != std::string::npos)
+      {
+          size_t nextdash = args->cmdline.find("--", found);
+          size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
+          robotCameraFOV = atof(args->cmdline.substr(found+5, endsearch).c_str());
+      }
+      
+      if ((robotCameraFOV <= 0.0) || (robotCameraFOV > 180.0))
+      {
+        printf("[ERROR] Invalid FOV! (0.0 < FOV <= 180.0)\n");
+        exit(1);
+      }
+      else
+      {
+        printf("[ARG] Robot FOV (d) : %.2f \n", robotCameraFOV);
+        robotCameraFOV = Stg::dtor(robotCameraFOV);
+      }
+      
+      found = args->cmdline.find("--depth");
+      if (found != std::string::npos)
+      {
+          size_t nextdash = args->cmdline.find("--", found);
+          size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
+          robotCameraDepth = atof(args->cmdline.substr(found+7, endsearch).c_str());
+      }
+      
+      if ((robotCameraDepth <= 0.0) || (robotCameraDepth >= 10.0))
+      {
+        printf("[ERROR] Invalid Camera Depth! (0.0 < Depth < 10.0)\n");
+        exit(1);
+      }
+      else
+      {
+        printf("[ARG] Robot Camera Depth (m) : %.2f \n", robotCameraDepth);
+      }
+      
+      
   }
   
 
   // subscribe to the ranger, which we use for navigating
-  robot->ranger = (ModelRanger*)mod->GetUnusedModelOfType( "ranger" );
-  assert( robot->ranger );
+//  robot->ranger = (ModelRanger*)mod->GetUnusedModelOfType( "ranger" );
+//  assert( robot->ranger );
 
   // ask Stage to call into our ranger update function
-  robot->ranger->AddCallback( Model::CB_UPDATE, (model_callback_t)RangerUpdate, robot );
+  //robot->ranger->AddCallback( Model::CB_UPDATE, (model_callback_t)RangerUpdate, robot );
 
   robot->fiducial = (ModelFiducial*)mod->GetUnusedModelOfType( "fiducial" ) ;
   
@@ -311,18 +426,19 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
   
   
 
+  robot->position->AddVisualizer( new CCVis(*robot), true);
   robot->fiducial->Subscribe();
-  robot->ranger->Subscribe();
+  //robot->ranger->Subscribe();
   robot->position->Subscribe();
 
   //printf("I am damn robot %d and my root id is %d \n", robot->position->GetId(), robot->position->Root()->GetId());
   return 0; //ok
 }
 
-int RangerUpdate( ModelRanger* rgr, robot_t* robot )
-{
-    return 0;
-}
+//int RangerUpdate( ModelRanger* rgr, robot_t* robot )
+//{
+//    return 0;
+//}
 
 int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
 {
@@ -346,7 +462,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   /* This is some shared knowledge, let's say it's global now */
   
   static Pose attCenter = Pose(0.0, 0.0, 0.0, 0.0);
-  static double movementX = 1e-4;
+  static double movementX = 0.0;//1e-4;
   double att_dx = attCenter.x - robot->position->GetPose().x;
   double att_dy = attCenter.y - robot->position->GetPose().y;
   double att_d = sqrt( (att_dx * att_dx) + (att_dy * att_dy) );
@@ -378,10 +494,7 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
   {
       fprintf(stderr, "%d,", (int) robot->teammates.size());
   }
-//  else
-//  {
-//      fprintf(stderr, "\"\",");
-//  }
+
   
   if (robot->state == SEARCHING)
   {
@@ -652,9 +765,15 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       
       /* This function must be calculated via Computation Geometery Methods*/
       
-      double rmin_adaptive = RMIN + ((bEnabled) ? ((double) robot->teammates.size() / 4.0) : 0.0);
+      //double rmin_adaptive = RMIN + ((bEnabled) ? ((double) robot->teammates.size() / 4.0) : 0.0);
+      double rmin_adaptive = RMIN + ((bEnabled) ? calc_r(robot->teammates.size()) : 0.0);
       
-      rmin_adaptive = 12.0;
+//      if (robot->position->GetId() == loggerID)
+//      {
+//          printf("%d %6.4f\n", robot->teammates.size(), calc_r(robot->teammates.size()));
+//      }
+      
+      //rmin_adaptive = 12.0;
       if (att_d < rmin_adaptive)
       {
           att_force = -FATTMAX;
