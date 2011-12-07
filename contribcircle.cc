@@ -83,7 +83,7 @@ static long int totalMessageCounterMy = 0;
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
 const double FWATT = 1.0;
-const double RMIN = 0.0;
+const double RMIN = 0.2;
 
 static list<RobotMessage> MessageList;
 
@@ -197,7 +197,7 @@ void updateMyInbox(robot_t* robot)
 /* Golden!*/
 double calc_r(int N)
 {
-    if (N == 1) return 0.0;
+    if (N <= 1) return 0.0;
     double theta = (2 * 3.1415) / double(N);
     double intr = (1.0 - cos(robotCameraFOV - theta)) / (1.0 - cos(theta));
     
@@ -342,7 +342,7 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       size_t found = args->cmdline.find("--relaycount");
       if (found != std::string::npos)
       {
-          size_t nextdash = args->cmdline.find("--", found);
+          size_t nextdash = args->cmdline.find("--", found+12);
           size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
           globalRelayCount = atoi(args->cmdline.substr(found+12, endsearch).c_str());
       }
@@ -360,7 +360,7 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       found = args->cmdline.find("--fov");
       if (found != std::string::npos)
       {
-          size_t nextdash = args->cmdline.find("--", found);
+          size_t nextdash = args->cmdline.find("--", found+5);
           size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
           robotCameraFOV = atof(args->cmdline.substr(found+5, endsearch).c_str());
       }
@@ -379,7 +379,7 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
       found = args->cmdline.find("--depth");
       if (found != std::string::npos)
       {
-          size_t nextdash = args->cmdline.find("--", found);
+          size_t nextdash = args->cmdline.find("--", found+7);
           size_t endsearch = (nextdash == std::string::npos) ? args->cmdline.length() : nextdash;
           robotCameraDepth = atof(args->cmdline.substr(found+7, endsearch).c_str());
       }
