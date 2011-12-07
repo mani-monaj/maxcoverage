@@ -83,7 +83,7 @@ static long int totalMessageCounterMy = 0;
 const double FATTMAX = 1.0;
 const double FREPMAX = -1.0;
 const double FWATT = 1.0;
-const double RMIN = 0.2;
+const double RMIN = 0.0;
 
 static list<RobotMessage> MessageList;
 
@@ -235,6 +235,8 @@ class CCVis : public Visualizer
     
     virtual void Visualize( Model* mod, Camera* cam )
     {
+      
+        if (rob.state != INGROUP) return;
       glPointSize( 8.0 );
  
       glPushMatrix();
