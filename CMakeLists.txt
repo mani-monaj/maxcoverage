@@ -20,8 +20,8 @@ endforeach(f)
 
 set_target_properties( contribcircle PROPERTIES
  COMPILE_FLAGS "${STG_CFLAGS_STR}"
-# LINK_FLAGS "${STG_LDFLAGS_STR} -framework opengl" 
-  LINK_FLAGS "${STG_LDFLAGS_STR}"
+ LINK_FLAGS "${STG_LDFLAGS_STR} -framework opengl" 
+#  LINK_FLAGS "${STG_LDFLAGS_STR}"
 )
 
 # delete the "lib" prefix from the plugin libraries

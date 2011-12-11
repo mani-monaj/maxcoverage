@@ -73,6 +73,7 @@ static double timeOrigin;
 static bool bEnabled = true; //Behaviour Enabled
 static bool energyEnabled = true; //Enerrgy Consumption
 static bool leaderEnabled = false;
+static bool perfectMode = false; //TODO: this must be used with --noenergy
 static int globalRelayCount = 3;
 static double robotCameraFOV = 60.0;
 static double robotCameraDepth = 1.0;
@@ -208,7 +209,7 @@ double calc_r(int N)
     }
     else
     {
-        return robotCameraDepth * sqrt(intr);
+        return (robotCameraDepth - 0.5) * sqrt(intr);
     }
 }
 //void updateRobotBelief(robot_t robot, )
@@ -321,6 +322,16 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
           printf("[ARG] Usage of knowledge enabled.\n");
       }
       
+      if (args->cmdline.find("--perfect") != std::string::npos)
+      {
+          printf("[ARG] Perfect mode activated.\n");
+          perfectMode = true;
+      }
+      else
+      {
+          printf("[ARG] Perfect mode is de-active.\n");
+      }
+      
       if (args->cmdline.find("--noenergy") != std::string::npos)
       {
           printf("[ARG] Usage of energy disabled.\n");
@@ -419,7 +430,9 @@ extern "C" int Init( Model* mod, CtrlArgs* args )
   HomePositions.pop_front();
   robot->position->SetPose(robot->charger);
   robot->teammates.push_front(robot->position->GetId());
-  setRobotState(robot, SEARCHING);
+  
+  setRobotState(robot, (perfectMode) ? INGROUP : SEARCHING);
+  
   if ((robot->position->GetId() == loggerID) && (leaderEnabled))
   {
       setRobotState(robot, INGROUP);
@@ -768,7 +781,17 @@ int FiducialUpdate( ModelFiducial* fid, robot_t* robot)
       /* This function must be calculated via Computation Geometery Methods*/
       
       //double rmin_adaptive = RMIN + ((bEnabled) ? ((double) robot->teammates.size() / 4.0) : 0.0);
-      double rmin_adaptive = RMIN + ((bEnabled) ? calc_r(robot->teammates.size()) : 0.0);
+      
+      double rmin_adaptive;
+      if (perfectMode)
+      {
+          rmin_adaptive = RMIN + calc_r(NUMBEROFROBOTS);
+      }
+      else
+      {
+          rmin_adaptive = RMIN + ((bEnabled) ? calc_r(robot->teammates.size()) : 0.0);
+      }
+      
       
 //      if (robot->position->GetId() == loggerID)
 //      {
